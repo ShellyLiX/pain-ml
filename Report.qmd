@@ -1,0 +1,31 @@
+---
+title: "Pain in Patients with Non-small Cell Lung Cancer"
+format: docx
+author: 
+  - name: Xiaoyin Li
+---
+
+## Methods
+
+### Participants and Procedure
+Participants were 1) diagnosed with NSCLC, 2) have radiographically assessable disease in the lung at baseline, 3) starting chemotherapy with an immune checkpoint inhibitor (i.e., PD1 or PD-L1), 4) able to speak and read English, 5) have Internet access, and 6) able to provide informed consent online or in person.
+### Measures
+
+## Preliminary Results
+### Sample Characteristics
+### Pain by time
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this 
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
