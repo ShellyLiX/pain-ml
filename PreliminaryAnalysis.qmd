@@ -1,0 +1,166 @@
+---
+title: "Pain in Patients with Non-small Cell Lung Cancer"
+format: docx
+author: 
+  - name: Shelly Li
+execute:
+  echo: false
+  warning: false
+  error: false
+date: "`r format(Sys.Date(), '%Y%m%d')`"
+output-file: "Preliminary Analysis"
+---
+
+```{r}
+#| echo: false
+library(tidyverse)
+library(gt)
+library(gtsummary)
+library(scales)
+library(texreg)
+library(psych)
+library(knitr)
+library(consort)
+load("/Volumes/jim_gonzalez_research/DATA/Jim/Machine Learning/Data Analysis/Li - Pain/AnalysisData.RData")
+```
+
+## Methods
+### Participants and Procedure
+
+Participants were 1) diagnosed with NSCLC, 2) have radiographically assessable disease in the lung at baseline, 3) starting chemotherapy with an immune checkpoint inhibitor (i.e., PD1 or PD-L1), 4) able to speak and read English, 5) have Internet access, and 6) able to provide informed consent online or in person.
+
+Participants took the baseline assessment on the same day as they received the first immunotherapy. Baseline and follow-up questionnaires were administrated either via paper, teleform or filled out online. Links to the online questionnaire were provided via email and/or text message according to patient preference. Study participation was for six months, or until the patient discontinued the immune checkpoint inhibitor, whichever came later.  
+
+### Measures
+#### Demographics
+
+Demographic information were obtained from all participants through use of a standardized self-report questionnaire. 
+
+#### Pain Assessment
+
+The pain assessment has been adapted from the McGill Pain Questionnaire to capture information about pain incidence and descriptors at different body locations (i.e., hands, arms, shoulders, neck, head/face, chest, stomach, pelvic region, upper back, lower back, knees, legs, feet/ankles, and other) and an overall description of their pain in the past week. The McGill Pain Questionnaire is widely used for chronic pain assessment and captures the subjective pain experience across multiple descriptors. The pain was assessed at baseline, every two weeks, and every three months during the study.
+
+#### Present Pain Intensity (PPI) 0-10
+
+The questionnaire also included symptomatic toxicities of immunotherapy (e.g., fatigue, muscle pain, rash) as well as symptoms likely to indicate cancer progression (e.g., for lung cancer: hemoptysis, pain, hoarseness, voice change, swelling of the face, fever greater than 100°F, lump under the skin).
+
+## Preliminary Results
+    
+Data were collected between `r min(analysis$dateofcompletion, na.rm = TRUE)` and `r max(analysis$dateofcompletion, na.rm = TRUE)`. The raw data set has 1814 observations from 162 patients, and `r 162-sum(analysis_chara$n_assessment == 1)` have data in at least one follow-up. However, at some time points, the questionnaire was not complete, and all pain variables were missing. After excluding these time points, there are 1796 observations with pain values from 160 patients, and `r 160-sum(analysis_chara_valid$n_assessment == 1)` have pain data in at least one follow-up. 
+
+### Sample Characteristics
+
+```{r}
+#|label: tbl-sample
+analysis_chara %>%
+  select(age, female, married, white, Hispanic, collgrad, more40k, 
+         TXDELAY, TXDELAYREAS1:TXDELAYREAS5,
+         TXDISCONTINUE, TXDISCONREAS1:TXDISCONREAS5) %>%
+  tbl_summary(label = c(age ~ "Age", female ~ "Female", married ~ "Married",
+                        white ~ "White", collgrad ~ "College Graduate", 
+                        more40k ~ "Household Income >= $40K", 
+                        TXDELAY ~ "Delayed Treatment", 
+                        #TXDELAYNUM ~ "Number or times delayed", 
+                        TXDELAYREAS1 ~ "Delayed reason: toxicity",
+                        TXDELAYREAS2 ~ "Delayed reason: progression",
+                        TXDELAYREAS3 ~ "Delayed reason: lack of response",
+                        TXDELAYREAS4 ~ "Delayed reason: stable disease",
+                        TXDELAYREAS5 ~ "Delayed reason: other",
+                        TXDISCONTINUE ~ "Discontinued Treatment", 
+                        TXDISCONREAS1 ~ "Discontinued reason: toxicity",
+                        TXDISCONREAS2 ~ "Delayed reason: progression",
+                        TXDISCONREAS3 ~ "Delayed reason: lack of response",
+                        TXDISCONREAS4 ~ "Delayed reason: stable disease",
+                        TXDISCONREAS5 ~ "Delayed reason: others", 
+                        missing_text = "(Missing)"),
+              type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{mean} ({sd})","{min} - {max}"),) %>%
+  modify_caption("**Table 1:** Sample characteristics") 
+```
+
+### Number of Assessments
+Average span of assessments among patients with valid pain assessments (n = 160). 
+
+```{r}
+#|label: tbl-assessment
+describe(analysis_chara_valid$max_assess) %>%
+  as.data.frame() %>%
+  select(-vars, - trimmed, -mad) %>%
+  gt() %>%
+  cols_align(align = "center")%>%
+  fmt_number(c(mean, sd, median, min, max, range, skew, kurtosis, se), decimals = 1)%>%
+  tab_options(table.width = "100%")
+```
+
+```{r}
+#|label: tbl-freq
+analysis_valid %>%
+  group_by(assessment) %>%
+  summarise(freq = n()) %>%
+  ggplot(aes(x = assessment, y = freq)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(yintercept = 10, linetype = "dashed", color = "red") + 
+  geom_vline(xintercept = 28, color = "red") + 
+  labs(
+  title = "Number of valid assesments at each time", 
+  x = "Assessment", 
+  y = "Number of patients") +
+  scale_x_continuous(breaks = seq(1, 60, by = 4), limits = c(1, 59)) +  
+  scale_y_continuous(breaks = seq(0, 160, by = 10), limits = c(0, 160)) +  
+  theme_minimal()
+```
+The heatmaps were made for the first 28 assessments (around one year after baseline) where at least 10 patients provided valid pain assessments. 
+
+### Heatmap for endorsing any pain 
+
+```{r}
+#|label: tbl-heat1
+heat_data %>%
+  # arrange(studyid, assessment) %>%
+  # filter(studyid == 12) %>%
+  ggplot(aes(x = assessment, 
+             y=reorder(pain_part_name, desc(pain_part_num)), 
+             fill = p_any * 100)) +  
+  geom_tile(color = "grey") +
+  scale_fill_gradient(low = "white", high = "red", name = "Percentage") +
+  scale_x_continuous(breaks = seq(1, 28, by = 2), limits = c(0.5, 28.5)) +
+  labs(title = "Percent of patients reporting any pain", 
+       x = "Assessment Number", 
+       y = "Body Part") +
+  #  annotation_custom(grob=textGrob(label='My text', rot=-90)) +
+  theme(text = element_text(size = 12)) +
+  theme_minimal() +
+  theme(panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  theme(legend.position = "bottom")
+```
+
+
+### Heatmap for endorsing moderate or severe pain
+
+```{r}
+#|label: tbl-heat2
+heat_data %>%
+  # arrange(studyid, assessment) %>%
+  # filter(studyid == 12) %>%
+  ggplot(aes(x = assessment, 
+             y=reorder(pain_part_name, desc(pain_part_num)), 
+             fill = p_ms * 100)) +  
+  geom_tile(color = "grey") +
+  scale_fill_gradient(low = "white", high = "red", name = "Percentage") +
+  scale_x_continuous(breaks = seq(1, 28, by = 2), limits = c(0.5, 28.5)) +
+  labs(title = expression("Heatmap of Percent reporting"~bold("moderate to severe")~"pain"), 
+       x = "Assessment Number", 
+       y = "Body Part") +
+  #  annotation_custom(grob=textGrob(label='My text', rot=-90)) +
+  theme(text = element_text(size = 12)) +
+  theme_minimal() +
+  theme(
+        panel.border = element_blank(), 
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  theme(legend.position = "bottom")
+```
+ 

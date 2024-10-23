@@ -2,30 +2,74 @@
 title: "Pain in Patients with Non-small Cell Lung Cancer"
 format: docx
 author: 
-  - name: Xiaoyin Li
+  - name: Shelly Li
+execute:
+  echo: false
+  warning: false
+  error: false
+date: "`r format(Sys.Date(), '%Y%m%d')`"
+output-file: "ML-DataReport"
 ---
-
-## Methods
-
-### Participants and Procedure
-Participants were 1) diagnosed with NSCLC, 2) have radiographically assessable disease in the lung at baseline, 3) starting chemotherapy with an immune checkpoint inhibitor (i.e., PD1 or PD-L1), 4) able to speak and read English, 5) have Internet access, and 6) able to provide informed consent online or in person.
-### Measures
-
-## Preliminary Results
-### Sample Characteristics
-### Pain by time
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
-```{r}
-1 + 1
-```
-
-You can add options to executable code like this 
 
 ```{r}
 #| echo: false
-2 * 2
+library(tidyverse)
+library(gt)
+library(gtsummary)
+library(scales)
+library(texreg)
+library(psych)
+library(knitr)
+load("/Volumes/jim_gonzalez_research/DATA/Jim/Machine Learning/Data Analysis/Li - Pain/AnalysisData.RData")
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Data were collected from 162 patients between `r min(scored$dateofcompletion, na.rm = TRUE)` and `r max(scored$dateofcompletion, na.rm = TRUE)`. Based on the protocol, we should have collected baseline data before or at the date of the first immunotherapy. However, for some patients, baseline dates happened after the first immunotherapy dates. 
+
+-  Here is the frequency table for the number of days from the first immunotherapy (IMMUNO1_DTE) to baseline assessment (baselinedate). Note that bl_tx1 = IMMUNO1_DTE - baselinedate, and those with negative days indicate baseline data collected after the first treatment (n = 12).
+
+```{r}
+#|label: tbl-bltotx
+test %>%
+  mutate(bl_tx1_factor = as.factor(bl_tx1)) %>%
+  tbl_summary(by = NULL, 
+              include = bl_tx1_factor, 
+              statistic = list(all_categorical() ~ "{n} ({p}%)"))
+```
+
+## The following 22 patients look problematic
+
+They either:
+
+1.  appeared to have baseline after the date of first treatment (n = 12, e.g., studyid = 1), or
+
+2.  were missing date of baseline or date of first treatment (n = 7, e,g., studyid = 8), or
+
+3.  have the first treatment more than 3 months after they took baseline (n = 3, studyid = 47, 48, or 51).
+
+### Can coordinators look into these cases？
+
+```{r}
+#|label: tbl-problem
+
+list<-test %>%
+  select(-date_immuno1) %>%
+  mutate(baselinedate = format(baselinedate, "%m/%d/%Y")) %>%
+  filter(bl_tx1 < 0 | bl_tx1 > 21 | is.na(bl_tx1)) %>%
+  as.data.frame()
+
+print(list)
+```
+
+-  We also have 10 patients whose baseline assessments were collected between 7 to 21 days before the first treatment. These should not be considered as “baseline” pain assessments.
+
+```{r}
+#|label: tbl-problem
+
+list<-test %>%
+  select(-date_immuno1) %>%
+  mutate(baselinedate = format(baselinedate, "%m/%d/%Y")) %>%
+  filter(bl_tx1 %in% (7:21)) %>%
+  as.data.frame()
+
+print(list)
+```
